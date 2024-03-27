@@ -1,4 +1,4 @@
-import { onValueUpdated } from 'firebase-functions/v2/database';
+import { onValueCreated, onValueUpdated } from 'firebase-functions/v2/database';
 import * as logger from 'firebase-functions/logger';
 import * as admin from 'firebase-admin';
 
@@ -35,7 +35,7 @@ export const onFlowerUpdated = onValueUpdated(
 
         logger.debug(`Sending notification to ${otherUser.name}`);
 
-        const tokens = user.fcmTokens;
+        const tokens = user.fcmtokens;
 
         if (!tokens) {
           logger.debug('No tokens found, skipping notification');
@@ -51,6 +51,12 @@ export const onFlowerUpdated = onValueUpdated(
             notification: {
               title: 'New Flower.',
               body: `${ownUser.name} selected a new flower.`,
+            },
+            android: {
+              notification: {
+                defaultVibrateTimings: true,
+                icon: 'notification_icon',
+              },
             },
           })
           .then((response) => {
@@ -111,7 +117,7 @@ export const onFeelingUpdated = onValueUpdated(
 
         logger.debug(`Sending notification to ${otherUser.name}`);
 
-        const tokens = user.fcmTokens;
+        const tokens = user.fcmtokens;
 
         if (!tokens) {
           logger.debug('No tokens found, skipping notification');
@@ -127,6 +133,77 @@ export const onFeelingUpdated = onValueUpdated(
             notification: {
               title: 'Change in the mood.',
               body: `${ownUser.name} feels ${FEELINGS_LABELS[feeling]}.`,
+            },
+            android: {
+              notification: {
+                defaultVibrateTimings: true,
+                icon: 'notification_icon',
+              },
+            },
+          })
+          .then((response) => {
+            logger.debug(`Successfully sent message: ${JSON.stringify(response)}`);
+          })
+          .catch((error) => {
+            logger.error(`Error sending message: ${JSON.stringify(error)}`);
+          });
+      });
+    });
+
+    return Promise.resolve();
+  },
+);
+
+export const onNewMessage = onValueCreated(
+  {
+    ref: 'rooms/{roomId}/messages/{messageId}',
+  },
+  (event) => {
+    const { roomId } = event.params;
+    const message = event.data.val();
+    logger.debug(`New message in room ${roomId}: ${JSON.stringify(message)}`);
+
+    const roomRef = db.ref(`rooms/${roomId}`);
+
+    roomRef.once('value', (snapshot) => {
+      const room = snapshot.val();
+      const otherUserId = Object.keys(room.users).find((id) => id !== message.uid);
+      const otherUser = room.users[otherUserId as string];
+      const ownUserId = Object.keys(room.users).find((id) => id === message.uid);
+      const ownUser = room.users[ownUserId as string];
+
+      const usersRef = db.ref(`users/${otherUserId}`);
+
+      logger.debug(`User ${ownUser.name} sent message ${message}`);
+
+      usersRef.once('value', (snapshot) => {
+        const user = snapshot.val();
+        logger.debug(`User: ${ownUser.name}`);
+
+        logger.debug(`Sending notification to ${otherUser.name}`);
+
+        const tokens = user.fcmtokens;
+
+        if (!tokens) {
+          logger.debug('No tokens found, skipping notification');
+          return;
+        }
+
+        logger.debug(`Sending notification to tokens: ${tokens}`);
+
+        admin
+          .messaging()
+          .sendEachForMulticast({
+            tokens,
+            notification: {
+              title: 'New message.',
+              body: `${ownUser.name} sent a new message.`,
+            },
+            android: {
+              notification: {
+                defaultVibrateTimings: true,
+                icon: 'notification_icon',
+              },
             },
           })
           .then((response) => {
