@@ -72,11 +72,13 @@ export const onFlowerUpdated = onValueUpdated(
   },
 );
 
-const FEELINGS_LABELS: {
+export const FEELINGS_LABELS: {
   [key: string]: string;
 } = {
+  angry: 'angry',
   anxious: 'anxious',
   bored: 'bored',
+  calm: 'calm',
   euphoric: 'euphoric',
   flirty: 'flirty',
   happy: 'happy',
@@ -84,10 +86,14 @@ const FEELINGS_LABELS: {
   hurt: 'hurt',
   inlove: 'in love',
   neutral: 'neutral',
+  nervous: 'nervous',
   overstimulated: 'overstimulated',
   sad: 'sad',
+  safe: 'safe',
+  sick: 'sick',
   tired: 'tired',
   uncomfortable: 'uncomfortable',
+  unsure: 'unsure',
   upset: 'upset',
   worried: 'worried',
 } as const;
@@ -198,6 +204,71 @@ export const onNewMessage = onValueCreated(
             notification: {
               title: 'New message.',
               body: `${ownUser.name} sent a new message.`,
+            },
+            android: {
+              notification: {
+                defaultVibrateTimings: true,
+                icon: 'notification_icon',
+              },
+            },
+          })
+          .then((response) => {
+            logger.debug(`Successfully sent message: ${JSON.stringify(response)}`);
+          })
+          .catch((error) => {
+            logger.error(`Error sending message: ${JSON.stringify(error)}`);
+          });
+      });
+    });
+
+    return Promise.resolve();
+  },
+);
+
+export const onNewWish = onValueCreated(
+  {
+    ref: 'rooms/{roomId}/wishlist/{activityId}/{wishId}',
+  },
+  (event) => {
+    const { roomId } = event.params;
+    const wish = event.data.val();
+    logger.debug(`New wish in room ${roomId}: ${JSON.stringify(wish)}`);
+
+    const roomRef = db.ref(`rooms/${roomId}`);
+
+    roomRef.once('value', (snapshot) => {
+      const room = snapshot.val();
+      const otherUserId = Object.keys(room.users).find((id) => id !== wish.uid);
+      const otherUser = room.users[otherUserId as string];
+      const ownUserId = Object.keys(room.users).find((id) => id === wish.uid);
+      const ownUser = room.users[ownUserId as string];
+
+      const usersRef = db.ref(`users/${otherUserId}`);
+
+      logger.debug(`User ${ownUser.name} added wish ${wish}`);
+
+      usersRef.once('value', (snapshot) => {
+        const user = snapshot.val();
+        logger.debug(`User: ${ownUser.name}`);
+
+        logger.debug(`Sending notification to ${otherUser.name}`);
+
+        const tokens = user.fcmtokens;
+
+        if (!tokens) {
+          logger.debug('No tokens found, skipping notification');
+          return;
+        }
+
+        logger.debug(`Sending notification to tokens: ${tokens}`);
+
+        admin
+          .messaging()
+          .sendEachForMulticast({
+            tokens,
+            notification: {
+              title: 'New wish.',
+              body: `${ownUser.name} added a new wish.`,
             },
             android: {
               notification: {
