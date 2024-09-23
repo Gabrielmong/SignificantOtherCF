@@ -292,3 +292,68 @@ export const onNewWish = onValueCreated(
     return Promise.resolve();
   },
 );
+
+export const onNewJournalEntry = onValueCreated(
+  {
+    ref: 'rooms/{roomId}/journal/{entryId}',
+  },
+  (event) => {
+    const { roomId } = event.params;
+    const entry = event.data.val();
+    logger.debug(`New journal entry in room ${roomId}: ${JSON.stringify(entry)}`);
+
+    const roomRef = db.ref(`rooms/${roomId}`);
+
+    roomRef.once('value', (snapshot) => {
+      const room = snapshot.val();
+      const otherUserId = Object.keys(room.users).find((id) => id !== entry.authorId);
+      const otherUser = room.users[otherUserId as string];
+      const ownUserId = Object.keys(room.users).find((id) => id === entry.authorId);
+      const ownUser = room.users[ownUserId as string];
+
+      const usersRef = db.ref(`users/${otherUserId}`);
+
+      logger.debug(`User ${ownUser.name} added journal entry ${entry}`);
+
+      usersRef.once('value', (snapshot) => {
+        const user = snapshot.val();
+        logger.debug(`User: ${ownUser.name}`);
+
+        logger.debug(`Sending notification to ${otherUser.name}`);
+
+        const tokens = user.fcmtokens;
+
+        if (!tokens) {
+          logger.debug('No tokens found, skipping notification');
+          return;
+        }
+
+        logger.debug(`Sending notification to tokens: ${tokens}`);
+
+        admin
+          .messaging()
+          .sendEachForMulticast({
+            tokens,
+            notification: {
+              title: `${ownUser.name} just wrote something 👀`,
+              body: `There's a new journal entry from ${ownUser.name}.`,
+            },
+            android: {
+              notification: {
+                defaultVibrateTimings: true,
+                icon: 'notification_icon',
+              },
+            },
+          })
+          .then((response) => {
+            logger.debug(`Successfully sent message: ${JSON.stringify(response)}`);
+          })
+          .catch((error) => {
+            logger.error(`Error sending message: ${JSON.stringify(error)}`);
+          });
+      });
+    });
+
+    return Promise.resolve();
+  },
+);
