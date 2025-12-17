@@ -22,17 +22,47 @@ export const onFlowerUpdated = onValueUpdated(
 
     roomRef.once('value', (snapshot) => {
       const room = snapshot.val();
+
+      if (!room) {
+        logger.warn(`Room ${roomId} not found, skipping notification`);
+        return;
+      }
+
+      if (!room.users || typeof room.users !== 'object') {
+        logger.warn(`Room ${roomId} has no users, skipping notification`);
+        return;
+      }
+
       const otherUserId = Object.keys(room.users).find((id) => id !== userId);
-      const otherUser = room.users[otherUserId as string];
-      const ownUserId = Object.keys(room.users).find((id) => id === userId);
-      const ownUser = room.users[ownUserId as string];
+      if (!otherUserId) {
+        logger.debug(`No other user found in room ${roomId}, skipping notification`);
+        return;
+      }
+
+      const otherUser = room.users[otherUserId];
+      const ownUser = room.users[userId];
+
+      if (!otherUser || !ownUser) {
+        logger.warn(`User data missing in room ${roomId}, skipping notification`);
+        return;
+      }
+
+      if (!ownUser.name || !otherUser.name) {
+        logger.warn('User names missing, skipping notification');
+        return;
+      }
 
       const usersRef = db.ref(`users/${otherUserId}`);
 
       usersRef.once('value', (snapshot) => {
         const user = snapshot.val();
-        logger.debug(`User: ${ownUser.name}`);
 
+        if (!user) {
+          logger.warn(`User ${otherUserId} not found, skipping notification`);
+          return;
+        }
+
+        logger.debug(`User: ${ownUser.name}`);
         logger.debug(`Sending notification to ${otherUser.name}`);
 
         const tokens = user.fcmtokens;
@@ -113,17 +143,48 @@ export const onFeelingUpdated = onValueUpdated(
 
     roomRef.once('value', (snapshot) => {
       const room = snapshot.val();
+
+      if (!room) {
+        logger.warn(`Room ${roomId} not found, skipping notification`);
+        return;
+      }
+
+      if (!room.users || typeof room.users !== 'object') {
+        logger.warn(`Room ${roomId} has no users, skipping notification`);
+        return;
+      }
+
       const otherUserId = Object.keys(room.users).find((id) => id !== userId);
-      const otherUser = room.users[otherUserId as string];
-      const ownUserId = Object.keys(room.users).find((id) => id === userId);
-      const ownUser = room.users[ownUserId as string];
+      if (!otherUserId) {
+        logger.debug(`No other user found in room ${roomId}, skipping notification`);
+        return;
+      }
+
+      const otherUser = room.users[otherUserId];
+      const ownUser = room.users[userId];
+
+      if (!otherUser || !ownUser) {
+        logger.warn(`User data missing in room ${roomId}, skipping notification`);
+        return;
+      }
+
+      if (!ownUser.name || !otherUser.name) {
+        logger.warn('User names missing, skipping notification');
+        return;
+      }
+
       const feeling = ownUser.selectedFeeling;
       const usersRef = db.ref(`users/${otherUserId}`);
 
       usersRef.once('value', (snapshot) => {
         const user = snapshot.val();
-        logger.debug(`User: ${ownUser.name}`);
 
+        if (!user) {
+          logger.warn(`User ${otherUserId} not found, skipping notification`);
+          return;
+        }
+
+        logger.debug(`User: ${ownUser.name}`);
         logger.debug(`Sending notification to ${otherUser.name}`);
 
         const tokens = user.fcmtokens;
@@ -141,7 +202,7 @@ export const onFeelingUpdated = onValueUpdated(
             tokens,
             notification: {
               title: 'Change in the mood.',
-              body: `${ownUser.name} feels ${FEELINGS_LABELS[feeling]}.`,
+              body: `${ownUser.name} feels ${FEELINGS_LABELS[feeling] || feeling || 'something new'}.`,
             },
             android: {
               notification: {
@@ -176,10 +237,36 @@ export const onNewMessage = onValueCreated(
 
     roomRef.once('value', (snapshot) => {
       const room = snapshot.val();
+
+      if (!room) {
+        logger.warn(`Room ${roomId} not found, skipping notification`);
+        return;
+      }
+
+      if (!room.users || typeof room.users !== 'object') {
+        logger.warn(`Room ${roomId} has no users, skipping notification`);
+        return;
+      }
+
       const otherUserId = Object.keys(room.users).find((id) => id !== message.uid);
-      const otherUser = room.users[otherUserId as string];
+      if (!otherUserId) {
+        logger.debug(`No other user found in room ${roomId}, skipping notification`);
+        return;
+      }
+
+      const otherUser = room.users[otherUserId];
       const ownUserId = Object.keys(room.users).find((id) => id === message.uid);
       const ownUser = room.users[ownUserId as string];
+
+      if (!otherUser || !ownUser) {
+        logger.warn(`User data missing in room ${roomId}, skipping notification`);
+        return;
+      }
+
+      if (!ownUser.name || !otherUser.name) {
+        logger.warn('User names missing, skipping notification');
+        return;
+      }
 
       const usersRef = db.ref(`users/${otherUserId}`);
 
@@ -187,8 +274,13 @@ export const onNewMessage = onValueCreated(
 
       usersRef.once('value', (snapshot) => {
         const user = snapshot.val();
-        logger.debug(`User: ${ownUser.name}`);
 
+        if (!user) {
+          logger.warn(`User ${otherUserId} not found, skipping notification`);
+          return;
+        }
+
+        logger.debug(`User: ${ownUser.name}`);
         logger.debug(`Sending notification to ${otherUser.name}`);
 
         const tokens = user.fcmtokens;
@@ -241,10 +333,36 @@ export const onNewWish = onValueCreated(
 
     roomRef.once('value', (snapshot) => {
       const room = snapshot.val();
+
+      if (!room) {
+        logger.warn(`Room ${roomId} not found, skipping notification`);
+        return;
+      }
+
+      if (!room.users || typeof room.users !== 'object') {
+        logger.warn(`Room ${roomId} has no users, skipping notification`);
+        return;
+      }
+
       const otherUserId = Object.keys(room.users).find((id) => id !== wish.uid);
-      const otherUser = room.users[otherUserId as string];
+      if (!otherUserId) {
+        logger.debug(`No other user found in room ${roomId}, skipping notification`);
+        return;
+      }
+
+      const otherUser = room.users[otherUserId];
       const ownUserId = Object.keys(room.users).find((id) => id === wish.uid);
       const ownUser = room.users[ownUserId as string];
+
+      if (!otherUser || !ownUser) {
+        logger.warn(`User data missing in room ${roomId}, skipping notification`);
+        return;
+      }
+
+      if (!ownUser.name || !otherUser.name) {
+        logger.warn('User names missing, skipping notification');
+        return;
+      }
 
       const usersRef = db.ref(`users/${otherUserId}`);
 
@@ -252,8 +370,13 @@ export const onNewWish = onValueCreated(
 
       usersRef.once('value', (snapshot) => {
         const user = snapshot.val();
-        logger.debug(`User: ${ownUser.name}`);
 
+        if (!user) {
+          logger.warn(`User ${otherUserId} not found, skipping notification`);
+          return;
+        }
+
+        logger.debug(`User: ${ownUser.name}`);
         logger.debug(`Sending notification to ${otherUser.name}`);
 
         const tokens = user.fcmtokens;
@@ -306,10 +429,36 @@ export const onNewJournalEntry = onValueCreated(
 
     roomRef.once('value', (snapshot) => {
       const room = snapshot.val();
+
+      if (!room) {
+        logger.warn(`Room ${roomId} not found, skipping notification`);
+        return;
+      }
+
+      if (!room.users || typeof room.users !== 'object') {
+        logger.warn(`Room ${roomId} has no users, skipping notification`);
+        return;
+      }
+
       const otherUserId = Object.keys(room.users).find((id) => id !== entry.authorId);
-      const otherUser = room.users[otherUserId as string];
+      if (!otherUserId) {
+        logger.debug(`No other user found in room ${roomId}, skipping notification`);
+        return;
+      }
+
+      const otherUser = room.users[otherUserId];
       const ownUserId = Object.keys(room.users).find((id) => id === entry.authorId);
       const ownUser = room.users[ownUserId as string];
+
+      if (!otherUser || !ownUser) {
+        logger.warn(`User data missing in room ${roomId}, skipping notification`);
+        return;
+      }
+
+      if (!ownUser.name || !otherUser.name) {
+        logger.warn('User names missing, skipping notification');
+        return;
+      }
 
       const usersRef = db.ref(`users/${otherUserId}`);
 
@@ -317,8 +466,13 @@ export const onNewJournalEntry = onValueCreated(
 
       usersRef.once('value', (snapshot) => {
         const user = snapshot.val();
-        logger.debug(`User: ${ownUser.name}`);
 
+        if (!user) {
+          logger.warn(`User ${otherUserId} not found, skipping notification`);
+          return;
+        }
+
+        logger.debug(`User: ${ownUser.name}`);
         logger.debug(`Sending notification to ${otherUser.name}`);
 
         const tokens = user.fcmtokens;
@@ -353,6 +507,228 @@ export const onNewJournalEntry = onValueCreated(
           });
       });
     });
+
+    return Promise.resolve();
+  },
+);
+
+export const onZoneEntered = onValueUpdated(
+  {
+    ref: 'rooms/{roomId}/zoneStatus/{userId}/{zoneId}',
+  },
+  (event) => {
+    const beforeStatus = event.data.before.val()?.status;
+    const afterStatus = event.data.after.val()?.status;
+
+    // Only trigger if transitioning TO 'inside' from any other status
+    if (beforeStatus !== 'inside' && afterStatus === 'inside') {
+      const { roomId, userId } = event.params;
+      const zoneData = event.data.after.val();
+
+      if (!zoneData) {
+        logger.warn(`Zone data not found for user ${userId}, skipping notification`);
+        return Promise.resolve();
+      }
+
+      if (!zoneData.zoneName) {
+        logger.warn('Zone name missing, skipping notification');
+        return Promise.resolve();
+      }
+
+      logger.debug(`User ${userId} entered zone ${zoneData.zoneName} in room ${roomId}`);
+
+      const roomRef = db.ref(`rooms/${roomId}`);
+
+      roomRef.once('value', (snapshot) => {
+        const room = snapshot.val();
+
+        if (!room) {
+          logger.warn(`Room ${roomId} not found, skipping notification`);
+          return;
+        }
+
+        if (!room.users || typeof room.users !== 'object') {
+          logger.warn(`Room ${roomId} has no users, skipping notification`);
+          return;
+        }
+
+        const otherUserId = Object.keys(room.users).find((id) => id !== userId);
+        if (!otherUserId) {
+          logger.debug(`No other user found in room ${roomId}, skipping notification`);
+          return;
+        }
+
+        const otherUser = room.users[otherUserId];
+        const ownUser = room.users[userId];
+
+        if (!otherUser || !ownUser) {
+          logger.warn(`User data missing in room ${roomId}, skipping notification`);
+          return;
+        }
+
+        if (!ownUser.name || !otherUser.name) {
+          logger.warn('User names missing, skipping notification');
+          return;
+        }
+
+        const usersRef = db.ref(`users/${otherUserId}`);
+
+        logger.debug(`User ${ownUser.name} entered zone ${zoneData.zoneName}`);
+
+        usersRef.once('value', (snapshot) => {
+          const user = snapshot.val();
+
+          if (!user) {
+            logger.warn(`User ${otherUserId} not found, skipping notification`);
+            return;
+          }
+
+          logger.debug(`Sending notification to ${otherUser.name}`);
+
+          const tokens = user.fcmtokens;
+
+          if (!tokens) {
+            logger.debug('No tokens found, skipping notification');
+            return;
+          }
+
+          logger.debug(`Sending notification to tokens: ${tokens}`);
+
+          admin
+            .messaging()
+            .sendEachForMulticast({
+              tokens,
+              notification: {
+                title: 'Zone arrival',
+                body: `${ownUser.name} arrived at ${zoneData.zoneName}`,
+              },
+              android: {
+                notification: {
+                  defaultVibrateTimings: true,
+                  icon: 'notification_icon',
+                },
+              },
+            })
+            .then((response) => {
+              logger.debug(`Successfully sent message: ${JSON.stringify(response)}`);
+            })
+            .catch((error) => {
+              logger.error(`Error sending message: ${JSON.stringify(error)}`);
+            });
+        });
+      });
+    }
+
+    return Promise.resolve();
+  },
+);
+
+export const onZoneExited = onValueUpdated(
+  {
+    ref: 'rooms/{roomId}/zoneStatus/{userId}/{zoneId}',
+  },
+  (event) => {
+    const beforeStatus = event.data.before.val()?.status;
+    const afterStatus = event.data.after.val()?.status;
+
+    // Only trigger if transitioning FROM 'inside' to any other status
+    if (beforeStatus === 'inside' && afterStatus !== 'inside') {
+      const { roomId, userId } = event.params;
+      const zoneData = event.data.before.val(); // Use 'before' for zone name
+
+      if (!zoneData) {
+        logger.warn(`Zone data not found for user ${userId}, skipping notification`);
+        return Promise.resolve();
+      }
+
+      if (!zoneData.zoneName) {
+        logger.warn('Zone name missing, skipping notification');
+        return Promise.resolve();
+      }
+
+      logger.debug(`User ${userId} exited zone ${zoneData.zoneName} in room ${roomId}`);
+
+      const roomRef = db.ref(`rooms/${roomId}`);
+
+      roomRef.once('value', (snapshot) => {
+        const room = snapshot.val();
+
+        if (!room) {
+          logger.warn(`Room ${roomId} not found, skipping notification`);
+          return;
+        }
+
+        if (!room.users || typeof room.users !== 'object') {
+          logger.warn(`Room ${roomId} has no users, skipping notification`);
+          return;
+        }
+
+        const otherUserId = Object.keys(room.users).find((id) => id !== userId);
+        if (!otherUserId) {
+          logger.debug(`No other user found in room ${roomId}, skipping notification`);
+          return;
+        }
+
+        const otherUser = room.users[otherUserId];
+        const ownUser = room.users[userId];
+
+        if (!otherUser || !ownUser) {
+          logger.warn(`User data missing in room ${roomId}, skipping notification`);
+          return;
+        }
+
+        if (!ownUser.name || !otherUser.name) {
+          logger.warn('User names missing, skipping notification');
+          return;
+        }
+
+        const usersRef = db.ref(`users/${otherUserId}`);
+
+        logger.debug(`User ${ownUser.name} exited zone ${zoneData.zoneName}`);
+
+        usersRef.once('value', (snapshot) => {
+          const user = snapshot.val();
+
+          if (!user) {
+            logger.warn(`User ${otherUserId} not found, skipping notification`);
+            return;
+          }
+
+          logger.debug(`Sending notification to ${otherUser.name}`);
+
+          const tokens = user.fcmtokens;
+
+          if (!tokens) {
+            logger.debug('No tokens found, skipping notification');
+            return;
+          }
+
+          logger.debug(`Sending notification to tokens: ${tokens}`);
+
+          admin
+            .messaging()
+            .sendEachForMulticast({
+              tokens,
+              notification: {
+                title: 'Zone departure',
+                body: `${ownUser.name} left ${zoneData.zoneName}`,
+              },
+              android: {
+                notification: {
+                  defaultVibrateTimings: true,
+                  icon: 'notification_icon',
+                },
+              },
+            })
+            .then((response) => {
+              logger.debug(`Successfully sent message: ${JSON.stringify(response)}`);
+            })
+            .catch((error) => {
+              logger.error(`Error sending message: ${JSON.stringify(error)}`);
+            });
+        });
+      });
+    }
 
     return Promise.resolve();
   },
