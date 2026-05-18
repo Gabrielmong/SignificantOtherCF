@@ -425,6 +425,8 @@ export const onNewJournalEntry = onValueCreated(
     const entry = event.data.val();
     logger.debug(`New journal entry in room ${roomId}: ${JSON.stringify(entry)}`);
 
+    if (!entry?.notifyPartner) return Promise.resolve();
+
     const roomRef = db.ref(`rooms/${roomId}`);
 
     roomRef.once('value', (snapshot) => {
