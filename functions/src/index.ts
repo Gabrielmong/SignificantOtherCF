@@ -95,6 +95,24 @@ export const onFlowerUpdated = onValueUpdated(
           .catch((error) => {
             logger.error(`Error sending message: ${JSON.stringify(error)}`);
           });
+        admin
+          .messaging()
+          .sendEachForMulticast({
+            tokens,
+            data: {
+              type: 'widget-refresh',
+              flower: ownUser.selectedFlower ?? '',
+              message: ownUser.message ?? '',
+              feeling: ownUser.selectedFeeling ?? '',
+              partnerName: ownUser.name ?? '',
+            },
+          })
+          .then((response) => {
+            logger.debug(`Widget refresh push sent: ${JSON.stringify(response)}`);
+          })
+          .catch((error) => {
+            logger.error(`Error sending widget refresh push: ${JSON.stringify(error)}`);
+          });
       });
     });
 
@@ -216,6 +234,24 @@ export const onFeelingUpdated = onValueUpdated(
           })
           .catch((error) => {
             logger.error(`Error sending message: ${JSON.stringify(error)}`);
+          });
+        admin
+          .messaging()
+          .sendEachForMulticast({
+            tokens,
+            data: {
+              type: 'widget-refresh',
+              flower: ownUser.selectedFlower ?? '',
+              message: ownUser.message ?? '',
+              feeling: ownUser.selectedFeeling ?? '',
+              partnerName: ownUser.name ?? '',
+            },
+          })
+          .then((response) => {
+            logger.debug(`Widget refresh push sent: ${JSON.stringify(response)}`);
+          })
+          .catch((error) => {
+            logger.error(`Error sending widget refresh push: ${JSON.stringify(error)}`);
           });
       });
     });
