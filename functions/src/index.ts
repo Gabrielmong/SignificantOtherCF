@@ -873,11 +873,22 @@ export const dailyQuestionReminder = onSchedule(
     const usersSnapshot = await db.ref('users').once('value');
     const users = usersSnapshot.val() || {};
 
+    const roomUserCounts = new Map<string, number>();
+
     for (const [userId, user] of Object.entries<any>(users)) {
       const roomId = user?.roomId;
       if (!roomId || !user?.fcmtokens) continue;
 
       try {
+        // Skip people whose room has no partner yet (read once per room).
+        let userCount = roomUserCounts.get(roomId);
+        if (userCount === undefined) {
+          const roomUsers = await db.ref(`rooms/${roomId}/users`).once('value');
+          userCount = Object.keys(roomUsers.val() || {}).length;
+          roomUserCounts.set(roomId, userCount);
+        }
+        if (userCount < 2) continue;
+
         const answer = await db
           .ref(`rooms/${roomId}/dailyQuestions/${today}/answers/${userId}`)
           .once('value');
