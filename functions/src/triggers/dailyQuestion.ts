@@ -101,7 +101,9 @@ export const dailyQuestionReminder = onSchedule(
 
     const roomUserCounts = new Map<string, number>();
 
-    for (const [userId, user] of Object.entries<any>(users)) {
+    // Only the fields this reminder reads; records can be partial
+    type UserRecord = { roomId?: string; fcmtokens?: string[] } | null;
+    for (const [userId, user] of Object.entries<UserRecord>(users)) {
       const roomId = user?.roomId;
       if (!roomId || !user?.fcmtokens) continue;
 
