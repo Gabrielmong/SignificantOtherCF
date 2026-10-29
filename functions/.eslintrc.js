@@ -13,6 +13,9 @@ module.exports = {
   parser: '@typescript-eslint/parser',
   parserOptions: {
     project: ['tsconfig.json', 'tsconfig.dev.json'],
+    // Resolve the tsconfigs next to this file, not from the current directory:
+    // editors run ESLint from the repo root, where there's no tsconfig.json
+    tsconfigRootDir: __dirname,
     sourceType: 'module',
   },
   ignorePatterns: [
