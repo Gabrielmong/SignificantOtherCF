@@ -67,7 +67,16 @@ export const onDailyAnswerCreated = onValueCreated(
         .ref(`rooms/${roomId}/dailyQuestions/${dateKey}/answers/${otherUserId}`)
         .once('value');
 
-      if (otherAnswer.exists()) {
+      // Answers for a day that has ended are allowed, marked late in the app
+      if (dateKey < coupleDateKey()) {
+        await sendToUser(
+          otherUserId,
+          `${name} answered a missed question ⏰`,
+          otherAnswer.exists() ?
+            'See their late answer in Daily questions.' :
+            'Answer it too to see what they said.',
+        );
+      } else if (otherAnswer.exists()) {
         await sendToUser(
           otherUserId,
           'You both answered 💬',
@@ -86,50 +95,80 @@ export const onDailyAnswerCreated = onValueCreated(
   },
 );
 
-export const dailyQuestionReminder = onSchedule(
+// Notifies everyone who hasn't answered today's question yet and whose
+// partner has joined their room
+const remindUnanswered = async (title: string, body: string) => {
+  const today = coupleDateKey();
+
+  // Read the small users node rather than every room (rooms hold
+  // messages, whiteboards, etc.).
+  const usersSnapshot = await db.ref('users').once('value');
+  const users = usersSnapshot.val() || {};
+
+  const roomUserCounts = new Map<string, number>();
+
+  // Only the fields this reminder reads; records can be partial
+  type UserRecord = { roomId?: string; fcmtokens?: string[] } | null;
+  for (const [userId, user] of Object.entries<UserRecord>(users)) {
+    const roomId = user?.roomId;
+    if (!roomId || !user?.fcmtokens) continue;
+
+    try {
+      // Skip people whose room has no partner yet (read once per room).
+      let userCount = roomUserCounts.get(roomId);
+      if (userCount === undefined) {
+        const roomUsers = await db.ref(`rooms/${roomId}/users`).once('value');
+        userCount = Object.keys(roomUsers.val() || {}).length;
+        roomUserCounts.set(roomId, userCount);
+      }
+      if (userCount < 2) continue;
+
+      const answer = await db
+        .ref(`rooms/${roomId}/dailyQuestions/${today}/answers/${userId}`)
+        .once('value');
+      if (answer.exists()) continue;
+
+      await sendToUser(userId, title, body);
+    } catch (error) {
+      logger.error(`Daily question reminder "${title}" failed for user ${userId}: ${error}`);
+    }
+  }
+};
+
+// Three reminders through the couple's day; each skips whoever has answered
+export const dailyQuestionMorningReminder = onSchedule(
   {
-    schedule: '0 20 * * *',
+    schedule: '0 10 * * *',
     timeZone: 'America/Costa_Rica',
   },
-  async () => {
-    const today = coupleDateKey();
+  () =>
+    remindUnanswered(
+      'Today\'s question is here 💭',
+      'Answer it to see what your partner says.',
+    ),
+);
 
-    // Read the small users node rather than every room (rooms hold
-    // messages, whiteboards, etc.).
-    const usersSnapshot = await db.ref('users').once('value');
-    const users = usersSnapshot.val() || {};
-
-    const roomUserCounts = new Map<string, number>();
-
-    // Only the fields this reminder reads; records can be partial
-    type UserRecord = { roomId?: string; fcmtokens?: string[] } | null;
-    for (const [userId, user] of Object.entries<UserRecord>(users)) {
-      const roomId = user?.roomId;
-      if (!roomId || !user?.fcmtokens) continue;
-
-      try {
-        // Skip people whose room has no partner yet (read once per room).
-        let userCount = roomUserCounts.get(roomId);
-        if (userCount === undefined) {
-          const roomUsers = await db.ref(`rooms/${roomId}/users`).once('value');
-          userCount = Object.keys(roomUsers.val() || {}).length;
-          roomUserCounts.set(roomId, userCount);
-        }
-        if (userCount < 2) continue;
-
-        const answer = await db
-          .ref(`rooms/${roomId}/dailyQuestions/${today}/answers/${userId}`)
-          .once('value');
-        if (answer.exists()) continue;
-
-        await sendToUser(
-          userId,
-          'Today\'s question is waiting 💭',
-          'Answer before midnight to see your partner\'s answer.',
-        );
-      } catch (error) {
-        logger.error(`Daily question reminder failed for user ${userId}: ${error}`);
-      }
-    }
+export const dailyQuestionAfternoonReminder = onSchedule(
+  {
+    schedule: '30 14 * * *',
+    timeZone: 'America/Costa_Rica',
   },
+  () =>
+    remindUnanswered(
+      'Still thinking about today\'s question? 🤔',
+      'There\'s time to answer and see your partner\'s answer.',
+    ),
+);
+
+// Keeps its original export name: renaming a function deletes and recreates it
+export const dailyQuestionReminder = onSchedule(
+  {
+    schedule: '0 22 * * *',
+    timeZone: 'America/Costa_Rica',
+  },
+  () =>
+    remindUnanswered(
+      'Two hours left ⏳',
+      'Today\'s question closes at midnight. Answer to see your partner\'s answer.',
+    ),
 );
